@@ -1,0 +1,117 @@
+[project]
+name = "visit_manager"
+version = "0.1.0"
+description = "visit manager, part of ERSMS project"
+authors = [
+    {name = "kfijalkowski1", email = "k.1.fijalkowski@gmail.com"}
+]
+packages = [
+    { include = "visit_manager" }
+]
+license = "MIT"
+requires-python = ">=3.11,<4"
+dependencies = [
+    "fastapi[standard] (>=0.115.12,<0.116.0)",
+    "elasticsearch (>=8.17.2,<9.0.0)",
+    "pre-commit (>=4.2.0,<5.0.0)",
+    "sqlalchemy (>=2.0.40,<3.0.0)",
+    "sqlalchemy-utils (>=0.41.2,<0.42.0)",
+    "kubernetes (>=32.0.1,<33.0.0)",
+    "pg8000 (>=1.31.2,<2.0.0)",
+    "kafka-python (>=2.1.5,<3.0.0)",
+]
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+ruff = "^0.11.2"
+mypy = "^1.15.0"
+kubernetes-stubs = "^22.6.0.post1"
+types-sqlalchemy-utils = "^1.1.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# external tools
+[tool.mypy]
+exclude = [".venv", "tests"]
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["kafka.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["kubernetes.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+target-version = "py311"
+indent-width = 4
+line-length = 120
+
+[tool.ruff.lint]
+# By default, Ruff enables Flake8's E and F rules
+# Pyflakes - F, pycodestyle - E, W
+# flake8-builtins - A
+# Pylint - PLC, PLE, PLW
+# isort - I
+select = ['E', 'F', 'W', 'A', 'PLC', 'PLE', 'PLW', 'I', 'FAST']
+ignore = [
+    # LineTooLong
+    "E501",
+    # DoNotAssignLambda
+    "E731",
+]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
