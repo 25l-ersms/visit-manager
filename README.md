@@ -23,20 +23,22 @@ VIRTUAL_ENV=.venv poetry install --with dev
 
 ```shell
 # production environment
-docker build -t visit-scheduler:latest --target=prod .
+docker build -t visit-manager:latest --target=prod .
 
 # development environemnt (includes pytest, ruff, mypy and hot-reload)
-docker build -t visit-scheduler:dev --target=dev .
+docker build -t visit-manager:dev --target=dev .
 ```
 
 ### Development
 
 # Dev variables defined in .env in dev-ops repo
 
-- ES_HOST
-- ES_LOGIN
-- ES_PASS
-- UVICORN_WORKERS
+- POSTGRES_USER
+- POSTGRES_PASSWORD
+- POSTGRES_HOST
+- POSTGRES_PORT
+- KAFKA_HOST
+- VISIT_MANAGER_LOG_LEVEL
 
 #### Running the app
 
@@ -51,13 +53,13 @@ Run the dev image with hot reload:
 ```shell
 docker run -it --env-file=.env \
     --mount type=bind,src=$(pwd)/visit_scheduler,dst=/app/visit_scheduler \
-    visit-scheduler:dev
+    visit-manager:dev
 ```
 
 Run the prod image:
 
 ```shell
-docker run -it --env-file=.env visit-scheduler:latest
+docker run -it --env-file=.env visit-manager:latest
 ```
 
 #### Contributing

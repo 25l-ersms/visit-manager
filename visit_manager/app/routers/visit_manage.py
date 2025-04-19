@@ -1,8 +1,8 @@
-from typing import Annotated, List
+from typing import Annotated, Sequence
 
 from fastapi import APIRouter
 from fastapi.params import Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from visit_manager.app.models.models import UserCreate
 from visit_manager.postgres_utils.models.users import User, add_user, read_all_users
@@ -12,10 +12,10 @@ router = APIRouter(prefix="/user", tags=["user"], responses={404: {"description"
 
 
 @router.post("/add", response_model=UserCreate)  # TODO change to real response model
-async def add_user_end(user: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User:
-    return add_user(db, user)
+async def add_user_end(user: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]) -> User:
+    return await add_user(db, user)
 
 
-@router.get("/read", response_model=List[UserCreate])  # TODO change to real response model, add real logic
-async def read_all_end(db: Annotated[Session, Depends(get_db)]) -> list[User]:
-    return read_all_users(db)
+@router.get("/read", response_model=list[UserCreate])  # TODO change to real response model, add real logic
+async def read_all_end(db: Annotated[AsyncSession, Depends(get_db)]) -> Sequence[User]:
+    return await read_all_users(db)

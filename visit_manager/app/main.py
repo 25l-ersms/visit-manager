@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from visit_manager.app.routers import visit_manage
 from visit_manager.kafka_utils.common import enable_listen_to_kafka
 from visit_manager.package_utils.logger_conf import logger
+from visit_manager.postgres_utils.utils import create_tables
 
 # from fastapi.security import OAuth2PasswordBearer
 
@@ -16,7 +17,9 @@ from visit_manager.package_utils.logger_conf import logger
 
 
 @asynccontextmanager
-async def lifespan(turboApp: FastAPI) -> AsyncGenerator[None, Any]:
+async def lifespan(turbo_app: FastAPI) -> AsyncGenerator[None, Any]:
+    logger.info("Initializing database connection...")
+    await create_tables()
     logger.info("Starting Kafka consumer thread...")
     thread = threading.Thread(target=enable_listen_to_kafka, daemon=True)
     thread.start()
