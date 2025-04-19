@@ -16,4 +16,3 @@ jobs:
     secrets: inherit
     with:
       img_name: ersms-visit_manager
-                                                        
