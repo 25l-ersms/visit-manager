@@ -1,13 +1,13 @@
 import os
-from typing import Any, Generator
+from typing import Any, AsyncGenerator
 
 import dotenv
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
-from sqlalchemy import URL, create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy_utils import create_database, database_exists
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from visit_manager.package_utils.logger_conf import logger
 from visit_manager.postgres_utils.models import Base
 
 
@@ -31,41 +31,42 @@ def get_creds() -> tuple[str, str, str, str]:
     return get_k8s_es_credits(v1)
 
 
-def get_pg_client_url() -> URL:
-    username, pg_pass, pg_host, pg_port = get_creds()
-    return URL.create(
-        "postgresql+pg8000",
-        username=username,
-        password=pg_pass,  # plain (unescaped) text
-        host=pg_host,
-        port=int(pg_port),
-        database="visit_manager",
+def get_url() -> str:
+    db_user, db_password, db_host, db_port = get_creds()
+    return f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/visit_manager"
+
+
+async def create_tables() -> None:
+    """Create database tables asynchronously"""
+    db_user, db_password, db_host, db_port = get_creds()
+
+    temp_engine = create_async_engine(
+        f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/postgres", echo=True
     )
 
+    async with temp_engine.connect() as conn:
+        result = await conn.execute(text("SELECT 1 FROM pg_database WHERE datname='visit_manager'"))
+        if not result.scalar_one_or_none():
+            await conn.execute(text("COMMIT"))  # End transaction
+            await conn.execute(text("CREATE DATABASE visit_manager"))
+            logger.info("Database created")
 
-# Singleton class to create a connection to the database
-class SqlEngine(object):
-    def __init__(self) -> None:
-        url = get_pg_client_url()
-        self.engine = create_engine(url)
-        if not database_exists(self.engine.url):
-            create_database(self.engine.url)
-            print(f"Database {self.engine.url.database} created")  # TODO add logger
-        Base.metadata.create_all(self.engine)
+    await temp_engine.dispose()
 
-    def __new__(cls) -> "SqlEngine":
-        if not hasattr(cls, "instance"):
-            cls.instance = super(SqlEngine, cls).__new__(cls)
-            print("Create instance of SqlEngine")  # TODO add logger
-        return cls.instance
+    create_engine = create_async_engine(
+        f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/visit_manager", echo=True
+    )
 
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=SqlEngine().engine)
+    async with create_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        logger.info("Tables created")
 
 
-def get_db() -> Generator[Session, Any, None]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+engine = create_async_engine(get_url(), echo=True)
+AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, Any]:
+    """Get a database session"""
+    async with AsyncSessionLocal() as session:
+        yield session

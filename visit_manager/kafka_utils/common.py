@@ -1,7 +1,10 @@
+import os
+
 from kafka import KafkaConsumer
 
 from visit_manager.package_utils.logger_conf import logger
 
+KAFKA_HOST = os.getenv("KAFKA_HOST", "broker")
 TOPIC = "test_topic"
 BOOTSTRAP_SERVERS = ["broker:9092"]
 GROUP_ID = "my-consumer-group"
