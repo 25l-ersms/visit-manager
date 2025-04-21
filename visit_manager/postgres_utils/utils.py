@@ -72,7 +72,7 @@ async def create_tables() -> None:
 
 
 engine = create_async_engine(get_url(), echo=True)
-AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, autocommit=False, autoflush=False)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, Any]:
