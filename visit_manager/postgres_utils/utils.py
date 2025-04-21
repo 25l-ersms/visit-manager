@@ -4,7 +4,7 @@ from typing import Any, AsyncGenerator
 import dotenv
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
-from sqlalchemy import text
+from sqlalchemy import URL, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from visit_manager.package_utils.logger_conf import logger
@@ -25,25 +25,34 @@ def get_creds() -> tuple[str, str, str, str]:
             os.getenv("POSTGRES_USER") or "",
             os.getenv("POSTGRES_PASSWORD") or "",
             os.getenv("POSTGRES_HOST") or "",
-            # pg running on 5432 is a safe assumption
-            os.getenv("POSTGRES_PORT") or "5432",
+            os.getenv("POSTGRES_PORT") or "",
         )
     v1 = client.CoreV1Api()
     return get_k8s_es_credits(v1)
 
 
-def get_url() -> str:
+def get_url(db_name: str = "visit_manager") -> URL:
+    """
+    Return url without db name
+
+    :return:
+    """
     db_user, db_password, db_host, db_port = get_creds()
-    return f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/visit_manager"
+    return URL.create(
+        drivername="postgresql+asyncpg",
+        username=db_user,
+        password=db_password,
+        host=db_host,
+        port=int(db_port),
+        database=db_name,
+    )
 
 
 async def create_tables() -> None:
     """Create database tables asynchronously"""
     db_user, db_password, db_host, db_port = get_creds()
 
-    temp_engine = create_async_engine(
-        f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/postgres", echo=True
-    )
+    temp_engine = create_async_engine(get_url("postgres"), echo=True)
 
     async with temp_engine.connect() as conn:
         result = await conn.execute(text("SELECT 1 FROM pg_database WHERE datname='visit_manager'"))
@@ -54,13 +63,12 @@ async def create_tables() -> None:
 
     await temp_engine.dispose()
 
-    create_engine = create_async_engine(
-        f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/visit_manager", echo=True
-    )
+    tmp_create_engine = create_async_engine(get_url(), echo=True)
 
-    async with create_engine.begin() as conn:
+    async with tmp_create_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         logger.info("Tables created")
+    await tmp_create_engine.dispose()
 
 
 engine = create_async_engine(get_url(), echo=True)
