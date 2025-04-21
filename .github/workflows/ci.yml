@@ -1,0 +1,14 @@
+name: CI
+
+on:
+  pull_request:
+      types: [opened, reopened, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: 25l-ersms/25L-ersms-devops/.github/workflows/ci-python.yml@main
+    with:
+      package-name: visit_manager

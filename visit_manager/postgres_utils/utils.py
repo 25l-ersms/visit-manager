@@ -25,7 +25,8 @@ def get_creds() -> tuple[str, str, str, str]:
             os.getenv("POSTGRES_USER") or "",
             os.getenv("POSTGRES_PASSWORD") or "",
             os.getenv("POSTGRES_HOST") or "",
-            os.getenv("POSTGRES_PORT") or "",
+            # pg running on 5432 is a safe assumption
+            os.getenv("POSTGRES_PORT") or "5432",
         )
     v1 = client.CoreV1Api()
     return get_k8s_es_credits(v1)

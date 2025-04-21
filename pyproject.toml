@@ -31,6 +31,7 @@ ruff = "^0.11.2"
 mypy = "^1.15.0"
 kubernetes-stubs = "^22.6.0.post1"
 types-sqlalchemy-utils = "^1.1.0"
+pytest-cov = "^6.1.1"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
