@@ -1099,6 +1099,18 @@ python-dateutil = ">=2.8.2"
 scramp = ">=1.4.5"
 
 [[package]]
+name = "phonenumbers"
+version = "9.0.4"
+description = "Python version of Google's common library for parsing, formatting, storing and validating international phone numbers."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "phonenumbers-9.0.4-py2.py3-none-any.whl", hash = "sha256:ac8aa9d4679da5078547aeb159d78c2b60f8d0fb4eafdc7cf464069039b30ccd"},
+    {file = "phonenumbers-9.0.4.tar.gz", hash = "sha256:b1530fc2a7b67e4c37c63e8e736c7e6efe2fed283c1bbb5c08c4511ec0c160ed"},
+]
+
+[[package]]
 name = "platformdirs"
 version = "4.3.7"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
@@ -2131,4 +2143,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "45a14f9d74d94047bd45ac0de5f329b147196b51dbcf637466647b7903cbcb19"
+content-hash = "aee5415b3c6d6488fca828150b7159d625bbf7e353be225aa81bfe8f15c87283"
