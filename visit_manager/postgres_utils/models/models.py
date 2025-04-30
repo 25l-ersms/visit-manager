@@ -35,7 +35,7 @@ class Admin(Base):
 class Client(Base):
     __tablename__ = "client"
     client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.user_id"), primary_key=True)
-    user: Mapped["User"] = relationship(back_populates="admin_profile", single_parent=True)
+    user: Mapped["User"] = relationship(back_populates="client_profile", single_parent=True)
     registration_fee_payment_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         ForeignKey("payment.payment_id"), unique=True, nullable=True, index=True
     )
