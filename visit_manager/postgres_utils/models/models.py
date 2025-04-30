@@ -1,4 +1,3 @@
-import enum
 import uuid
 from datetime import datetime
 from typing import List, Optional
@@ -9,7 +8,7 @@ from sqlalchemy.sql import func
 from sqlalchemy_utils import EmailType, PhoneNumber, PhoneNumberType
 
 from visit_manager.postgres_utils.models.common import Base
-from visit_manager.postgres_utils.models.misc import VisitStatus
+from visit_manager.postgres_utils.models.misc import PaymentStatus, VisitStatus
 
 
 class User(Base):
@@ -79,15 +78,6 @@ class Address(Base):
     state_or_region: Mapped[str] = mapped_column(nullable=False)
     country: Mapped[str] = mapped_column(nullable=False)
     zip_code: Mapped[str] = mapped_column(nullable=False)
-
-
-class PaymentStatus(str, enum.Enum):
-    __tablename__ = "payment_status"
-    processing = "processing"
-    cancelled = "cancelled"
-    error = "error"
-    success = "success"
-    refunded = "refunded"
 
 
 class Payment(Base):
