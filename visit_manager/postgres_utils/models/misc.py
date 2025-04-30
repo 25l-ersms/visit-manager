@@ -9,10 +9,4 @@ class VisitStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
-class PaymentStatus(str, enum.Enum):
-    __tablename__ = "payment_status"
-    processing = "processing"
-    cancelled = "cancelled"
-    error = "error"
-    success = "success"
-    refunded = "refunded"
+from visit_manager.postgres_utils.models import PaymentStatus
