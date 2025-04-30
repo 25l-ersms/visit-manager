@@ -1,4 +1,4 @@
-# Visit scheduler
+# Visit manager
 
 ## Development
 
@@ -45,14 +45,14 @@ docker build -t visit-manager:dev --target=dev .
 Run locally:
 
 ```shell
-poetry run uvicorn --reload visit_scheduler.app.main:app --port 8080
+poetry run uvicorn --reload visit_manager.app.main:app --port 8080
  ```
 
 Run the dev image with hot reload:
 
 ```shell
 docker run -it --env-file=.env \
-    --mount type=bind,src=$(pwd)/visit_scheduler,dst=/app/visit_scheduler \
+    --mount type=bind,src=$(pwd)/visit_manager,dst=/app/visit_manager \
     visit-manager:dev
 ```
 
