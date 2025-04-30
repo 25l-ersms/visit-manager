@@ -147,7 +147,7 @@ class Visit(Base):
         ForeignKey("payment.payment_id"), nullable=True, unique=True, index=True
     )
     deposit: Mapped[Optional["Payment"]] = relationship(single_parent=True)
-    verification_code: Mapped[Optional[str]]
+    verification_code: Mapped[Optional[str]] = mapped_column(nullable=True)
     review_opinion_score: Mapped[Optional[int]] = mapped_column(
         CheckConstraint("review_opinion_score IS NULL OR review_opinion_score >= 1 AND review_opinion_score <= 5"),
         CheckConstraint("(status = 'completed' AND review_opinion_score IS NOT NULL) OR review_opinion_score IS NULL"),
