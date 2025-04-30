@@ -152,7 +152,7 @@ class Visit(Base):
         CheckConstraint("review_opinion_score IS NULL OR review_opinion_score >= 1 AND review_opinion_score <= 5"),
         CheckConstraint("(status = 'completed' AND review_opinion_score IS NOT NULL) OR review_opinion_score IS NULL"),
     )
-    review_comment: Mapped[Optional[str]]
+    review_comment: Mapped[Optional[str]] = mapped_column(nullable=True)
     status: Mapped[VisitStatus] = mapped_column(Enum(VisitStatus, name="visit_status"), nullable=False)
     description_attachments: Mapped[List["Attachment"]] = relationship(
         secondary="VisitDescriptionAttachment", cascade="all, delete-orphan"
