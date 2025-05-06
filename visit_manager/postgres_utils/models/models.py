@@ -20,21 +20,43 @@ class User(Base):
     email: Mapped[str] = mapped_column(EmailType, unique=True, index=True, nullable=False)
     registration_timestamp: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     last_login: Mapped[datetime] = mapped_column(server_default=func.now())
-    admin_profile: Mapped[Optional["Admin"]] = relationship(back_populates="user", uselist=False, single_parent=True)
-    vendor_profile: Mapped[Optional["Vendor"]] = relationship(back_populates="user", uselist=False, single_parent=True)
-    client_profile: Mapped[Optional["Client"]] = relationship(back_populates="user", uselist=False, single_parent=True)
+    admin_profile: Mapped[Optional["Admin"]] = relationship(
+        back_populates="user",
+        uselist=False,
+        single_parent=True,
+        primaryjoin="User.user_id==Admin.admin_id",
+        lazy="joined",
+    )
+    vendor_profile: Mapped[Optional["Vendor"]] = relationship(
+        back_populates="user",
+        uselist=False,
+        single_parent=True,
+        primaryjoin="User.user_id==Vendor.vendor_id",
+        lazy="joined",
+    )
+    client_profile: Mapped[Optional["Client"]] = relationship(
+        back_populates="user",
+        uselist=False,
+        single_parent=True,
+        primaryjoin="User.user_id==Client.client_id",
+        lazy="joined",
+    )
 
 
 class Admin(Base):
     __tablename__ = "admin"
     admin_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.user_id"), primary_key=True)
-    user: Mapped["User"] = relationship(back_populates="admin_profile", single_parent=True)
+    user: Mapped["User"] = relationship(
+        back_populates="admin_profile", single_parent=True, primaryjoin="User.user_id==Admin.admin_id", lazy="joined"
+    )
 
 
 class Client(Base):
     __tablename__ = "client"
     client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.user_id"), primary_key=True)
-    user: Mapped["User"] = relationship(back_populates="client_profile", single_parent=True)
+    user: Mapped["User"] = relationship(
+        back_populates="client_profile", single_parent=True, primaryjoin="User.user_id==Client.client_id", lazy="joined"
+    )
     registration_fee_payment_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         ForeignKey("payment.payment_id"), unique=True, nullable=True, index=True
     )
@@ -47,7 +69,9 @@ class Client(Base):
 class Vendor(Base):
     __tablename__ = "vendor"
     vendor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.user_id"), primary_key=True)
-    user: Mapped["User"] = relationship(back_populates="vendor_profile", single_parent=True)
+    user: Mapped["User"] = relationship(
+        back_populates="vendor_profile", single_parent=True, primaryjoin="User.user_id==Vendor.vendor_id", lazy="joined"
+    )
     vendor_name: Mapped[str] = mapped_column(nullable=False)
     required_deposit_gr: Mapped[Optional[int]] = mapped_column(
         CheckConstraint("required_deposit_gr IS NULL OR required_deposit_gr > 0")
@@ -63,7 +87,7 @@ class Vendor(Base):
     phone_number: Mapped[PhoneNumber] = mapped_column(PhoneNumberType, nullable=False)
     is_active: Mapped[bool] = mapped_column(server_default="true", nullable=False)
     offered_service_types: Mapped[List["ServiceType"]] = relationship(
-        secondary="VendorOfferedServiceTypes", back_populates="offering_vendors"
+        secondary="vendor_offered_service_types", back_populates="offering_vendors"
     )
     visits: Mapped[List["Visit"]] = relationship(back_populates="vendor")
 
@@ -95,9 +119,9 @@ class ChatSession(Base):
     __table_args__ = (UniqueConstraint("visit_id", "user_id", "vendor_id"),)
     chat_session_id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.user_id"), nullable=False, index=True)
-    user: Mapped["User"] = relationship(back_populates="chat_session", single_parent=True)
+    user: Mapped["User"] = relationship(single_parent=True)
     vendor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("vendor.vendor_id"), nullable=False, index=True)
-    vendor: Mapped["Vendor"] = relationship(back_populates="chat_session", single_parent=True)
+    vendor: Mapped["Vendor"] = relationship(single_parent=True)
     visit_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("visit.visit_id"), nullable=True, index=True)
     visit: Mapped["Visit"] = relationship(back_populates="chat_session", single_parent=True)
 
@@ -108,7 +132,7 @@ class ServiceType(Base):
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
     description: Mapped[str] = mapped_column(nullable=False)
     offering_vendors: Mapped[List["Vendor"]] = relationship(
-        secondary="VendorOfferedServiceTypes", back_populates="offered_service_types"
+        secondary="vendor_offered_service_types", back_populates="offered_service_types"
     )
 
 
@@ -122,8 +146,8 @@ class VendorOfferedServiceTypes(Base):
 class Visit(Base):
     __tablename__ = "visit"
     visit_id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.user_id"), nullable=False, index=True)
-    user: Mapped["User"] = relationship(back_populates="visits", single_parent=True)
+    client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("client.client_id"), nullable=False, index=True)
+    client: Mapped["Client"] = relationship(back_populates="visits", single_parent=True)
     vendor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("vendor.vendor_id"), nullable=False, index=True)
     vendor: Mapped["Vendor"] = relationship(back_populates="visits", single_parent=True)
     start_timestamp: Mapped[datetime] = mapped_column(nullable=False)
@@ -134,7 +158,7 @@ class Visit(Base):
     )
     service_type: Mapped["ServiceType"] = relationship(single_parent=True)
     address_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("address.address_id"), nullable=False, index=True)
-    address: Mapped["Address"] = relationship(back_populates="visit", single_parent=True)
+    address: Mapped["Address"] = relationship(single_parent=True)
     deposit_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         ForeignKey("payment.payment_id"), nullable=True, unique=True, index=True
     )
@@ -147,10 +171,13 @@ class Visit(Base):
     review_comment: Mapped[Optional[str]] = mapped_column(nullable=True)
     status: Mapped[VisitStatus] = mapped_column(Enum(VisitStatus, name="visit_status"), nullable=False)
     description_attachments: Mapped[List["Attachment"]] = relationship(
-        secondary="VisitDescriptionAttachment", cascade="all, delete-orphan"
+        secondary="visit_description_attachment", cascade="all, delete-orphan", single_parent=True
     )
     review_attachments: Mapped[List["Attachment"]] = relationship(
-        secondary="VisitReviewAttachment", cascade="all, delete-orphan"
+        secondary="visit_review_attachment", cascade="all, delete-orphan", single_parent=True
+    )
+    chat_session: Mapped[Optional["ChatSession"]] = relationship(
+        back_populates="visit", uselist=False, single_parent=True
     )
 
 
