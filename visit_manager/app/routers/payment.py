@@ -1,20 +1,20 @@
 import os
+
 import stripe
 from fastapi import APIRouter, HTTPException, status
+from stripe.error import StripeError  # type: ignore[attr-defined]
+
 from visit_manager.app.models import ChargeRequest, ChargeResponse, RefundResponse
 from visit_manager.package_utils.logger_conf import logger
 from visit_manager.postgres_utils.models.transaction import (
+    FILE_PATH,
     Transaction,
     add_transaction,
-    delete_transaction,
     delete_last_transaction,
+    delete_transaction,
 )
 
-router = APIRouter(
-    prefix="/payment",
-    tags=["payment"],
-    responses={404: {"description": "Not found"}}
-)
+router = APIRouter(prefix="/payment", tags=["payment"], responses={404: {"description": "Not found"}})
 
 stripe.api_key = os.getenv("STRIPE_API_KEY")
 if not stripe.api_key:
@@ -22,8 +22,8 @@ if not stripe.api_key:
     raise RuntimeError("Brak STRIPE_API_KEY w środowisku")
 
 
-@router.post("/charge", response_model=ChargeResponse, status_code=status.HTTP_201_CREATED)
-async def create_charge(req: ChargeRequest):
+@router.post("/charge", status_code=status.HTTP_201_CREATED)
+async def create_charge(req: ChargeRequest) -> ChargeResponse:
     """
     Tworzy testową opłatę na Stripe (tok_visa) i dodaje ją do pliku.
     """
@@ -33,22 +33,22 @@ async def create_charge(req: ChargeRequest):
             currency=req.currency,
             source="tok_visa",
         )
-    except stripe.error.StripeError as e:
-        detail = getattr(e, "user_message", None) or str(e)
+    except StripeError as e:
+        detail = e.user_message or str(e)
         raise HTTPException(status_code=400, detail=detail)
 
-    add_transaction(tx_id=charge.id, amount=charge.amount, currency=charge.currency)
+    add_transaction(tx_id=charge.id, amount=charge.amount, currency=charge.currency, path=FILE_PATH)
 
     return ChargeResponse(
         charge_id=charge.id,
-        status=charge.status,
+        status=charge.status or "unknown",
         amount=charge.amount,
         currency=charge.currency,
     )
 
 
-@router.delete("/charge/last", response_model=RefundResponse)
-async def refund_last():
+@router.delete("/charge/last")
+async def refund_last() -> RefundResponse:
     """
     Refunduje i usuwa ostatnią transakcję z pliku.
     """
@@ -59,36 +59,36 @@ async def refund_last():
 
     try:
         refund = stripe.Refund.create(charge=last.id)
-    except stripe.error.StripeError as e:
-        detail = getattr(e, "user_message", None) or str(e)
-        add_transaction(tx_id=last.id, amount=last.amount, currency=last.currency)
+    except StripeError as e:
+        add_transaction(tx_id=last.id, amount=last.amount, currency=last.currency, path=FILE_PATH)
+        detail = e.user_message or str(e)
         raise HTTPException(status_code=400, detail=detail)
 
     return RefundResponse(
         refund_id=refund.id,
-        status=refund.status,
+        status=refund.status or "unknown",
         charge_refunded=last.id,
     )
 
 
-@router.delete("/charge/{charge_id}", response_model=RefundResponse)
-async def refund_by_id(charge_id: str):
+@router.delete("/charge/{charge_id}")
+async def refund_by_id(charge_id: str) -> RefundResponse:
     """
     Refunduje i usuwa transakcję o konkretnym ID.
     """
     try:
-        delete_transaction(tx_id=charge_id)
+        delete_transaction(tx_id=charge_id, path=FILE_PATH)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Transakcja {charge_id} nie znaleziona")
 
     try:
         refund = stripe.Refund.create(charge=charge_id)
-    except stripe.error.StripeError as e:
+    except StripeError as e:
         detail = getattr(e, "user_message", None) or str(e)
         raise HTTPException(status_code=400, detail=detail)
 
     return RefundResponse(
         refund_id=refund.id,
-        status=refund.status,
+        status=refund.status or "unknown",
         charge_refunded=charge_id,
     )
