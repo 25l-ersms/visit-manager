@@ -1,10 +1,12 @@
 import os
 from typing import List, NamedTuple
 
+
 class Transaction(NamedTuple):
     id: str
     amount: int
     currency: str
+
 
 FILE_PATH = "/app/visit_manager/data/charges.txt"
 
@@ -15,8 +17,8 @@ def list_transactions(path: str = FILE_PATH) -> List[Transaction]:
     """
     if not os.path.exists(path):
         return []
-    with open(path, "r", encoding="utf-8") as f:
-        lines = [l.strip() for l in f if l.strip()]
+    with open(path, "r", encoding="utf-8") as file:
+        lines = [line.strip() for line in file if line.strip()]
     txs: List[Transaction] = []
     for line in lines:
         tx_id, amt, cur = line.split(",", 2)
