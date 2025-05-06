@@ -16,10 +16,12 @@ from visit_manager.postgres_utils.models.transaction import (
 
 router = APIRouter(prefix="/payment", tags=["payment"], responses={404: {"description": "Not found"}})
 
-stripe.api_key = os.getenv("STRIPE_API_KEY")
-if not stripe.api_key:
-    logger.critical("STRIPE_API_KEY nie jest ustawiony!")
-    raise RuntimeError("Brak STRIPE_API_KEY w środowisku")
+stripe_api_key = os.getenv("STRIPE_API_KEY")
+if stripe_api_key:
+    stripe.api_key = stripe_api_key
+else:
+    logger.warning("STRIPE_API_KEY is not set; payment endpoints will return 500 at runtime")
+
 
 
 @router.post("/charge", status_code=status.HTTP_201_CREATED)
@@ -27,6 +29,9 @@ async def create_charge(req: ChargeRequest) -> ChargeResponse:
     """
     Tworzy testową opłatę na Stripe (tok_visa) i dodaje ją do pliku.
     """
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Stripe API key not configured")
+    
     try:
         charge = stripe.Charge.create(
             amount=req.amount,
@@ -52,6 +57,9 @@ async def refund_last() -> RefundResponse:
     """
     Refunduje i usuwa ostatnią transakcję z pliku.
     """
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Stripe API key not configured")
+    
     try:
         last: Transaction = delete_last_transaction()
     except IndexError:
@@ -76,6 +84,9 @@ async def refund_by_id(charge_id: str) -> RefundResponse:
     """
     Refunduje i usuwa transakcję o konkretnym ID.
     """
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Stripe API key not configured")
+    
     try:
         delete_transaction(tx_id=charge_id, path=FILE_PATH)
     except KeyError:
