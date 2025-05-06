@@ -23,7 +23,6 @@ else:
     logger.warning("STRIPE_API_KEY is not set; payment endpoints will return 500 at runtime")
 
 
-
 @router.post("/charge", status_code=status.HTTP_201_CREATED)
 async def create_charge(req: ChargeRequest) -> ChargeResponse:
     """
@@ -31,7 +30,7 @@ async def create_charge(req: ChargeRequest) -> ChargeResponse:
     """
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Stripe API key not configured")
-    
+
     try:
         charge = stripe.Charge.create(
             amount=req.amount,
@@ -59,7 +58,7 @@ async def refund_last() -> RefundResponse:
     """
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Stripe API key not configured")
-    
+
     try:
         last: Transaction = delete_last_transaction()
     except IndexError:
@@ -86,7 +85,7 @@ async def refund_by_id(charge_id: str) -> RefundResponse:
     """
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Stripe API key not configured")
-    
+
     try:
         delete_transaction(tx_id=charge_id, path=FILE_PATH)
     except KeyError:
