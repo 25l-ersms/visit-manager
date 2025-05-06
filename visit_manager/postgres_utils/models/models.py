@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from sqlalchemy_utils import EmailType, PhoneNumber, PhoneNumberType
+from sqlalchemy_utils import Currency, CurrencyType, EmailType, PhoneNumber, PhoneNumberType
 
 from visit_manager.postgres_utils.models.common import Base
 from visit_manager.postgres_utils.models.misc import PaymentStatus, VisitStatus
@@ -83,7 +83,9 @@ class Address(Base):
 class Payment(Base):
     __tablename__ = "payment"
     payment_id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
-    value_gr: Mapped[int] = mapped_column(CheckConstraint("value_gr > 0"), nullable=False)
+    stripe_charge_id: Mapped[str] = mapped_column(unique=True, index=True)
+    amount: Mapped[int] = mapped_column(CheckConstraint("amount > 0"), nullable=False)
+    currency: Mapped[Currency] = mapped_column(CurrencyType, nullable=False, default="PLN")
     transaction_timestamp: Mapped[datetime] = mapped_column(nullable=False)
     status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status"), nullable=False)
 
