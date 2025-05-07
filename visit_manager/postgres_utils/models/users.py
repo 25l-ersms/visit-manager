@@ -1,20 +1,10 @@
-import uuid
 from typing import Sequence
 
-from sqlalchemy import UUID, Column, String, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from visit_manager.app.models.models import UserCreate
-from visit_manager.postgres_utils.models.common import Base
-
-
-# TODO its just an example
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(UUID, primary_key=True, default=uuid.uuid4)
-    email = Column(String, unique=True, index=True, nullable=False)
-    full_name = Column(String, nullable=False)
+from visit_manager.postgres_utils.models.models import User
 
 
 async def add_user(session: AsyncSession, user: UserCreate) -> User:
