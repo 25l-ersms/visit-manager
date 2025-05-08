@@ -4,6 +4,7 @@ from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from visit_manager.app.routers import auth
 
 from visit_manager.app.routers import visit_manage
 from visit_manager.kafka_utils.common import enable_listen_to_kafka
@@ -30,6 +31,7 @@ async def lifespan(turbo_app: FastAPI) -> AsyncGenerator[None, Any]:
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(visit_manage.router)
+app.include_router(auth.router)
 
 app.add_middleware(
     CORSMiddleware,
