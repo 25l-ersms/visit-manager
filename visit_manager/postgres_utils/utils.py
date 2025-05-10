@@ -1,33 +1,27 @@
-import os
 from typing import Any, AsyncGenerator
 
-import dotenv
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
 from sqlalchemy import URL, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from visit_manager.package_utils.logger_conf import logger
+from visit_manager.package_utils.settings import PostgresSettings
 from visit_manager.postgres_utils.models import Base
 
 
-def get_k8s_es_credits(v1: client.CoreV1Api) -> tuple[str, str, str, str]:
+def get_k8s_es_credits(v1: client.CoreV1Api) -> tuple[str, str, str, int]:
     print("K8s...")
-    return "", "", "", ""
+    return "", "", "", 5432
 
 
-def get_creds() -> tuple[str, str, str, str]:
+def get_creds() -> tuple[str, str, str, int]:
     try:
         config.load_kube_config()  # type: ignore[attr-defined]
     except ConfigException:
-        dotenv.load_dotenv()
-        return (
-            os.getenv("POSTGRES_USER") or "",
-            os.getenv("POSTGRES_PASSWORD") or "",
-            os.getenv("POSTGRES_HOST") or "",
-            # pg running on 5432 is a safe assumption
-            os.getenv("POSTGRES_PORT") or "5432",
-        )
+        settings = PostgresSettings()
+
+        return (settings.USER, settings.PASSWORD, settings.HOST, settings.PORT)
     v1 = client.CoreV1Api()
     return get_k8s_es_credits(v1)
 
@@ -44,7 +38,7 @@ def get_url(db_name: str = "visit_manager") -> URL:
         username=db_user,
         password=db_password,
         host=db_host,
-        port=int(db_port),
+        port=db_port,
         database=db_name,
     )
 

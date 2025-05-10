@@ -22,6 +22,11 @@ dependencies = [
     "asyncpg (>=0.30.0,<0.31.0)",
     "phonenumbers (>=9.0.4,<10.0.0)",
     "babel (>=2.17.0,<3.0.0)",
+    "google-auth (>=2.40.1,<3.0.0)",
+    "packaging (>=25.0,<26.0)",
+    "urllib3 (>=2.4.0,<3.0.0)",
+    "confluent-kafka (>=2.10.0,<3.0.0)",
+    "pydantic-settings (>=2.9.1,<3.0.0)",
 ]
 
 [tool.poetry]

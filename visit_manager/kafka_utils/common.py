@@ -1,32 +1,64 @@
-import os
+from typing import Literal
 
-from kafka import KafkaConsumer
+import confluent_kafka  # type: ignore[import-untyped]
 
+from visit_manager.kafka_utils.oauth import KafkaTokenProvider
 from visit_manager.package_utils.logger_conf import logger
+from visit_manager.package_utils.settings import KafkaSettings
 
-KAFKA_HOST = os.getenv("KAFKA_HOST", "broker")
-TOPIC = "test_topic"
-BOOTSTRAP_SERVERS = ["broker:9092"]
-GROUP_ID = "my-consumer-group"
+kafka_authentication_scheme_t = Literal["oauth", "none"]
 
 
-def handle_message(message: str) -> None:
+def _get_kafka_config(
+    bootstrap_url: str, group_id: str, auth_scheme: kafka_authentication_scheme_t
+) -> dict[str, (str | int | bool | object | None)]:
+    config = {
+        "bootstrap.servers": bootstrap_url,
+        "group.id": group_id,
+        "enable.auto.commit": True,
+        "auto.offset.reset": "earliest",
+    }
+
+    if auth_scheme == "oauth":
+        logger.debug("Using OAuth for Kafka authentication")
+        token_provider = KafkaTokenProvider()
+
+        config = config | {
+            "security.protocol": "SASL_SSL",
+            "sasl.mechanisms": "OAUTHBEARER",
+            "oauth_cb": token_provider.get_token,
+        }
+    else:
+        logger.debug("Assuming Kafka authentication is not required")
+
+    return config
+
+
+def _handle_message(message: str) -> None:
     logger.info(f"Processing message: {message}")
 
 
 def listen_to_kafka() -> None:
-    consumer = KafkaConsumer(
-        TOPIC,
-        bootstrap_servers=BOOTSTRAP_SERVERS,
-        auto_offset_reset="earliest",
-        enable_auto_commit=True,
-        group_id=GROUP_ID,
-        value_deserializer=lambda x: x.decode("utf-8"),
+    settings = KafkaSettings()
+
+    auth_scheme: kafka_authentication_scheme_t = settings.AUTHENTICATION_SCHEME
+
+    config = _get_kafka_config(
+        bootstrap_url=settings.BOOTSTRAP_URL, group_id=settings.GROUP_ID, auth_scheme=auth_scheme
     )
 
-    logger.info(f"Listening for messages on topic '{TOPIC}'...")
-    for msg in consumer:
-        handle_message(msg.value)
+    consumer = confluent_kafka.Consumer(config)
+    consumer.subscribe([settings.TOPIC])
+    logger.info(f"Listening for messages on Kafka topic '{settings.TOPIC}'...")
+
+    while True:
+        msg = consumer.poll(1.0)
+        if msg is None:
+            continue
+        if msg.error():
+            logger.error(f"Kafka error: {msg.error()}")
+            continue
+        _handle_message(msg.value().decode("utf-8"))
 
 
 def enable_listen_to_kafka() -> None:
