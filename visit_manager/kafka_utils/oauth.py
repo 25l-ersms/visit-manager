@@ -53,7 +53,7 @@ class KafkaTokenProvider(object):
         # We're not using it, but without it, the client will silently fail the OAuth2 authentication (this behavior is not documented!)
         # https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html#kafka-client-configuration
         if config_str is not None:
-            logger.warn("config_str was passed to get_token, but it will not be used")
+            logger.warning("config_str was passed to get_token, but it will not be used")
 
         logger.debug("Requesting Kafka credentials")
         creds = self.get_credentials()
