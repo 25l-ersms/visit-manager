@@ -33,7 +33,7 @@ class KafkaTokenProvider(object):
         if not self.credentials.valid:
             logger.debug("Application default credentials not valid, refreshing")
             self.credentials.refresh(Request(self.http_client))
-        logger.debug("Application default credentials not valid")
+        logger.debug("Application default credentials valid")
 
         return self.credentials  # type: ignore[no-any-return]
 

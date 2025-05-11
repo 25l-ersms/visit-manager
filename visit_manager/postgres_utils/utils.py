@@ -1,9 +1,10 @@
+import functools
 from typing import Any, AsyncGenerator
 
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
 from sqlalchemy import URL, text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from visit_manager.package_utils.logger_conf import logger
 from visit_manager.package_utils.settings import PostgresSettings
@@ -66,11 +67,16 @@ async def create_tables() -> None:
     await tmp_create_engine.dispose()
 
 
-engine = create_async_engine(get_url(), echo=True)
-AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+@functools.lru_cache(maxsize=1)
+def get_async_engine() -> AsyncEngine:
+    engine = create_async_engine(get_url(), echo=True)
+    return engine
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, Any]:
+    engine = get_async_engine()
+    AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
     """Get a database session"""
     async with AsyncSessionLocal() as session:
         yield session

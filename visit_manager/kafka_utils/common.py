@@ -1,12 +1,8 @@
-from typing import Literal
-
 import confluent_kafka  # type: ignore[import-untyped]
 
 from visit_manager.kafka_utils.oauth import KafkaTokenProvider
 from visit_manager.package_utils.logger_conf import logger
-from visit_manager.package_utils.settings import KafkaSettings
-
-kafka_authentication_scheme_t = Literal["oauth", "none"]
+from visit_manager.package_utils.settings import KafkaSettings, kafka_authentication_scheme_t
 
 
 def _get_kafka_consumer_config(
@@ -52,7 +48,7 @@ def listen_to_kafka() -> None:
     logger.info(f"Listening for messages on Kafka topic '{settings.TOPIC}'...")
 
     while True:
-        msg = consumer.poll(1.0)
+        msg = consumer.poll(timeout=1.0)
         if msg is None:
             continue
         if msg.error():
