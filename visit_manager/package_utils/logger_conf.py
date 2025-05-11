@@ -1,13 +1,16 @@
 import logging
-import os
 
-level = os.getenv("VISIT_MANAGER_LOG_LEVEL", "INFO").upper()
+from visit_manager.package_utils.settings import VisitManagerSettings
+
+settings = VisitManagerSettings()
+
+level = settings.LOG_LEVEL
 # create logger
 logger = logging.getLogger("visit_manager")
-logger.setLevel("INFO")
+logger.setLevel(level)
 
 ch = logging.StreamHandler()
-ch.setLevel("INFO")
+ch.setLevel(level)
 
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
