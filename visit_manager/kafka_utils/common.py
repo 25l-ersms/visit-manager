@@ -9,7 +9,7 @@ from visit_manager.package_utils.settings import KafkaSettings
 kafka_authentication_scheme_t = Literal["oauth", "none"]
 
 
-def _get_kafka_config(
+def _get_kafka_consumer_config(
     bootstrap_url: str, group_id: str, auth_scheme: kafka_authentication_scheme_t
 ) -> dict[str, (str | int | bool | object | None)]:
     config = {
@@ -43,7 +43,7 @@ def listen_to_kafka() -> None:
 
     auth_scheme: kafka_authentication_scheme_t = settings.AUTHENTICATION_SCHEME
 
-    config = _get_kafka_config(
+    config = _get_kafka_consumer_config(
         bootstrap_url=settings.BOOTSTRAP_URL, group_id=settings.GROUP_ID, auth_scheme=auth_scheme
     )
 
