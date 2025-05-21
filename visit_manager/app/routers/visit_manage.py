@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from visit_manager.app.models.models import UserCreate
+from visit_manager.app.models.user_models import UserCreate
 from visit_manager.postgres_utils.models.users import User, add_user, read_all_users
 from visit_manager.postgres_utils.utils import get_db
 
