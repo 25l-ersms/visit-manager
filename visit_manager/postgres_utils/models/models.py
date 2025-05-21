@@ -110,7 +110,7 @@ class Payment(Base):
     stripe_charge_id: Mapped[str] = mapped_column(unique=True, index=True)
     amount: Mapped[int] = mapped_column(CheckConstraint("amount > 0"), nullable=False)
     currency: Mapped[Currency] = mapped_column(CurrencyType, nullable=False, default="PLN")
-    transaction_timestamp: Mapped[datetime] = mapped_column(nullable=False)
+    transaction_timestamp: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status"), nullable=False)
 
 
