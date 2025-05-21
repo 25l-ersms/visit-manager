@@ -1,62 +1,40 @@
-import os
-from typing import List, NamedTuple
+from typing import Optional, Sequence
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from visit_manager.postgres_utils.models.models import Payment, PaymentStatus
 
 
-class Transaction(NamedTuple):
-    id: str
-    amount: int
-    currency: str
+async def add_payment(session: AsyncSession, payment: Payment) -> Payment:
+    async with session.begin():
+        session.add(payment)
+    await session.refresh(payment)
+    return payment
 
 
-FILE_PATH = "/app/visit_manager/data/charges.txt"
+async def read_all_payments(session: AsyncSession) -> Sequence[Payment]:
+    async with session.begin():
+        result = await session.execute(select(Payment))
+        payments = result.scalars().all()
+        return payments
 
 
-def list_transactions(path: str = FILE_PATH) -> List[Transaction]:
-    """
-    Wczytuje wszystkie transakcje z pliku i zwraca je jako listę Transaction.
-    """
-    if not os.path.exists(path):
-        return []
-    with open(path, "r", encoding="utf-8") as file:
-        lines = [line.strip() for line in file if line.strip()]
-    txs: List[Transaction] = []
-    for line in lines:
-        tx_id, amt, cur = line.split(",", 2)
-        txs.append(Transaction(id=tx_id, amount=int(amt), currency=cur))
-    return txs
+async def update_payment_status(
+    session: AsyncSession,
+    stripe_charge_id: str,
+    status: PaymentStatus,
+) -> Optional[Payment]:
+    async with session.begin():
+        result = await session.execute(select(Payment).where(Payment.stripe_charge_id == stripe_charge_id))
+        payment = result.scalars().first()
+        if not payment:
+            return None
+        payment.status = status
+        return payment
 
 
-def add_transaction(tx_id: str, amount: int, currency: str, path: str = FILE_PATH) -> None:
-    """
-    Dopisuje nową transakcję na koniec pliku.
-    """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(f"{tx_id},{amount},{currency}\n")
-
-
-def delete_transaction(tx_id: str, path: str = FILE_PATH) -> None:
-    """
-    Usuwa z pliku transakcję o zadanym ID.
-    Zwraca KeyError, jeśli nie znaleziono.
-    """
-    txs = list_transactions(path)
-    filtered = [t for t in txs if t.id != tx_id]
-    if len(filtered) == len(txs):
-        raise KeyError(f"Transaction {tx_id} not found")
-    with open(path, "w", encoding="utf-8") as f:
-        for t in filtered:
-            f.write(f"{t.id},{t.amount},{t.currency}\n")
-
-
-def delete_last_transaction(path: str = FILE_PATH) -> Transaction:
-    """
-    Usuwa ostatnią transakcję w pliku.
-    Zwraca IndexError, jeśli plik jest pusty.
-    """
-    txs = list_transactions(path)
-    if not txs:
-        raise IndexError("No transactions to delete")
-    last = txs[-1]
-    delete_transaction(last.id, path)
-    return last
+async def get_payment_by_stripe_charge_id(session: AsyncSession, stripe_charge_id: str) -> Optional[Payment]:
+    async with session.begin():
+        result = await session.execute(select(Payment).where(Payment.stripe_charge_id == stripe_charge_id))
+        return result.scalars().first()

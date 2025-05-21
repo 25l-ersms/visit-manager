@@ -1,104 +1,159 @@
 import os
+from typing import Annotated, Any, Sequence
 
 import stripe
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from stripe.error import StripeError  # type: ignore[attr-defined]
 
-from visit_manager.app.models import ChargeRequest, ChargeResponse, RefundResponse
+from visit_manager.app.models.payment_models import ChargeRequest, ChargeResponse, RefundResponse
 from visit_manager.package_utils.logger_conf import logger
+from visit_manager.postgres_utils.models.models import Payment, PaymentStatus
 from visit_manager.postgres_utils.models.transaction import (
-    FILE_PATH,
-    Transaction,
-    add_transaction,
-    delete_last_transaction,
-    delete_transaction,
+    add_payment,
+    get_payment_by_stripe_charge_id,
+    read_all_payments,
+    update_payment_status,
 )
+from visit_manager.postgres_utils.utils import get_db
 
-router = APIRouter(prefix="/payment", tags=["payment"], responses={404: {"description": "Not found"}})
+router = APIRouter(prefix="/payment", tags=["payment"])
 
-stripe_api_key = os.getenv("STRIPE_API_KEY")
-if stripe_api_key:
-    stripe.api_key = stripe_api_key
-else:
-    logger.warning("STRIPE_API_KEY is not set; payment endpoints will return 500 at runtime")
+
+async def get_stripe_client() -> Any:
+    """
+    Dependency that provides an async Stripe client.
+    Raises 500 if API key not configured.
+    """
+    api_key = os.getenv("STRIPE_API_KEY")
+    if not api_key:
+        logger.warning("STRIPE_API_KEY is not set; payment endpoints will return 500 at runtime")
+        raise HTTPException(status_code=500, detail="Stripe API key not configured")
+    stripe.api_key = api_key
+    return stripe
 
 
 @router.post("/charge", status_code=status.HTTP_201_CREATED)
-async def create_charge(req: ChargeRequest) -> ChargeResponse:
+async def create_charge(
+    req: ChargeRequest,
+    stripe_client: Annotated[Any, Depends(get_stripe_client)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ChargeResponse:
     """
-    Tworzy testową opłatę na Stripe (tok_visa) i dodaje ją do pliku.
+    Creates a charge using Stripe API and stores the transaction in the database.
+    If the charge creation fails, raises 400 with the error message.
     """
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Stripe API key not configured")
-
-    try:
-        charge = stripe.Charge.create(
+    charge = await stripe_client.Charge.create_async(
+        amount=req.amount,
+        currency=req.currency,
+        source="tok_visa",
+    )
+    payment = await add_payment(
+        session=session,
+        payment=Payment(
+            stripe_charge_id=charge.id,
             amount=req.amount,
             currency=req.currency,
-            source="tok_visa",
-        )
-    except StripeError as e:
-        detail = e.user_message or str(e)
-        raise HTTPException(status_code=400, detail=detail)
-
-    add_transaction(tx_id=charge.id, amount=charge.amount, currency=charge.currency, path=FILE_PATH)
-
+            status=PaymentStatus.succeeded,
+        ),
+    )
     return ChargeResponse(
         charge_id=charge.id,
-        status=charge.status or "unknown",
-        amount=charge.amount,
-        currency=charge.currency,
+        status=charge.status,
+        amount=req.amount,
+        currency=req.currency,
+        transaction_timestamp=payment.transaction_timestamp,
     )
 
 
-@router.delete("/charge/last")
-async def refund_last() -> RefundResponse:
+@router.post(
+    "/refund/last",
+    status_code=status.HTTP_200_OK,
+    summary="Refund the most recent charge",
+    description="Issues a refund for the most recent successful charge.",
+)
+async def refund_last_charge(
+    stripe_client: Annotated[Any, Depends(get_stripe_client)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> RefundResponse:
     """
-    Refunduje i usuwa ostatnią transakcję z pliku.
+    Issues a refund for the most recent successful charge.
+    Raises:
+        HTTPException(404): when there is no transactions in database.
+        HTTPException(400): when last transaction has a different status than "success" or Stripe returned error when refunding.
     """
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Stripe API key not configured")
-
+    payments = await read_all_payments(session)
+    if not payments:
+        print("No transactions found to refund")
+        raise HTTPException(status_code=404, detail="No transactions found to refund")
+    last_payment = payments[-1]
+    charge_id = last_payment.stripe_charge_id
+    if last_payment.status != PaymentStatus.succeeded:
+        raise HTTPException(status_code=400, detail=f"Transaction {charge_id} is not eligible for refund")
     try:
-        last: Transaction = delete_last_transaction()
-    except IndexError:
-        raise HTTPException(status_code=404, detail="Brak transakcji do zwrotu")
-
-    try:
-        refund = stripe.Refund.create(charge=last.id)
+        refund = await stripe_client.Refund.create_async(charge=charge_id)
     except StripeError as e:
-        add_transaction(tx_id=last.id, amount=last.amount, currency=last.currency, path=FILE_PATH)
-        detail = e.user_message or str(e)
+        detail = getattr(e, "user_message", None) or str(e)
+        logger.error(f"Stripe refund error for {charge_id}: {detail}")
         raise HTTPException(status_code=400, detail=detail)
-
+    await update_payment_status(session=session, stripe_charge_id=charge_id, status=PaymentStatus.refunded)
     return RefundResponse(
+        charge_id=charge_id,
+        status=refund.status,
         refund_id=refund.id,
-        status=refund.status or "unknown",
-        charge_refunded=last.id,
+        charge_refunded=True,
     )
 
 
-@router.delete("/charge/{charge_id}")
-async def refund_by_id(charge_id: str) -> RefundResponse:
+@router.post("/refund/{charge_id}", status_code=status.HTTP_200_OK)
+async def refund_charge(
+    charge_id: str,
+    stripe_client: Annotated[Any, Depends(get_stripe_client)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> RefundResponse:
     """
-    Refunduje i usuwa transakcję o konkretnym ID.
+    Issues a refund for the given charge and updates its status.
+    If refund fails, transaction status is NOT updated to preserve consistency.
+    If the transaction is not found or is not eligible for refund, raises 404 or 400.
     """
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Stripe API key not configured")
-
+    payment = await get_payment_by_stripe_charge_id(session=session, stripe_charge_id=charge_id)
+    if not payment:
+        raise HTTPException(status_code=404, detail=f"Transaction {charge_id} not found")
+    if payment.status != PaymentStatus.succeeded:
+        raise HTTPException(status_code=400, detail=f"Transaction {charge_id} is not eligible for refund")
     try:
-        delete_transaction(tx_id=charge_id, path=FILE_PATH)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Transakcja {charge_id} nie znaleziona")
-
-    try:
-        refund = stripe.Refund.create(charge=charge_id)
+        refund = await stripe_client.Refund.create_async(charge=charge_id)
     except StripeError as e:
         detail = getattr(e, "user_message", None) or str(e)
         raise HTTPException(status_code=400, detail=detail)
-
+    await update_payment_status(session=session, stripe_charge_id=charge_id, status=PaymentStatus.refunded)
     return RefundResponse(
+        charge_id=charge_id,
+        status=refund.status,
         refund_id=refund.id,
-        status=refund.status or "unknown",
-        charge_refunded=charge_id,
+        charge_refunded=True,
     )
+
+
+@router.get(
+    "/charges",
+    status_code=status.HTTP_200_OK,
+    summary="List all charges",
+    description="Returns a list of all charges made through the system.",
+)
+async def list_charges(session: Annotated[AsyncSession, Depends(get_db)]) -> Sequence[ChargeResponse]:
+    """
+    Returns a list of all charges made through the system.
+    Each charge is represented by a ChargeResponse object.
+    """
+    payments = await read_all_payments(session)
+    return [
+        ChargeResponse(
+            charge_id=p.stripe_charge_id,
+            status=p.status,
+            amount=p.amount,
+            currency=p.currency,
+            transaction_timestamp=p.transaction_timestamp,
+        )
+        for p in payments
+    ]
