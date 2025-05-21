@@ -5,12 +5,10 @@ from pydantic import BaseModel, Field
 
 from visit_manager.postgres_utils.models.models import PaymentStatus
 
+
 class ChargeRequest(BaseModel):
     amount: int = Field(..., ge=1, description="Amount in smallest currency unit (grosze; 1000 = 10.00 PLN)")
-    currency: Annotated[
-        str,
-        Field(min_length=3, max_length=3, pattern=r"^[a-z]{3}$")
-    ] = "pln"
+    currency: Annotated[str, Field(min_length=3, max_length=3, pattern=r"^[a-z]{3}$")] = "pln"
 
 
 class ChargeResponse(BaseModel):
