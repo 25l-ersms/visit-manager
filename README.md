@@ -2,6 +2,16 @@
 
 ## Development
 
+## Basic functionality description
+- endpoint: register, ponieważ o co chodzi z rejestracją -> człowiek klika żeby się zalogować przez google i za pierwszym razem jak się loguje musi jeszcze podać dane typu czy user, czy wendor itp use case opisany w 2.1.1, technicznie to podczas rejestracji on już musi mieć jwt googlowe, widziałem że ten ziomek z telekomony coś próbował na branchu OAuth ale to raczej do pomocy przy implementacji, no i generalnie w momencie rejestracji trzeba wysłać na kafke message już wybierz topic jaki chcesz że człowiek się zarejestrował, żeby móc to użyć w innych mikroserwisach,
+- endpoint: register_visit --> zarejestrowanie wizyty: użytkownik chce móc zarejestrować wizytę u jakiegoś vendora (kiedy i jakie okresy czasu to to już będzie załatwione po stronie visit schedulera który wyśle na kafce że dana wizyta ma być dodana, request przyjdzie od visit_schedulera),
+- endpoint: /vendor/my_visits --> dla wendora zwraca jakie on ma wizyty do odbycia,,
+- endpoint: client/my_visits -->  dla usera jakie ma zaplanowane,
+- endpoint: get_visit_code --> wendor powinien wypordukować kod dla danej wizyty który potem user potwierdzi,
+- endpoint: check_visit_code --> user wpisuje kod który dostał od wendora i dostaje informację o jego poprawności --> na razie wizyt code to może być np. hash na bazie visit_id czy coś takiego w miarę prostego
+- endpoint: add_opinion --> który powinien działać dopiero po końcu wizyty: dodanie rekomendacji w skali od 1-5, dodanie jej do bazy, oraz wysłanie na kafkę wiadomości z vendor_id i jego aktualną średnią
+
+
 ### Dependencies
 
 The project manager used is [Poetry](https://python-poetry.org/) (version `>=2.0.0`).
