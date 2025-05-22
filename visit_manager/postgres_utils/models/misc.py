@@ -24,8 +24,8 @@ class VisitStatus(str, enum.Enum):
 
 class PaymentStatus(str, enum.Enum):
     __tablename__ = "payment_status"
-    processing = "processing"
-    cancelled = "cancelled"
-    error = "error"
-    success = "success"
+    pending = "pending"
+    succeeded = "succeeded"
+    failed = "failed"
+    canceled = "canceled"
     refunded = "refunded"

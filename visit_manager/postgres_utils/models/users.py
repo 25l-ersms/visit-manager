@@ -3,7 +3,7 @@ from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from visit_manager.app.models.models import UserCreate
+from visit_manager.app.models.user_models import UserCreate
 from visit_manager.postgres_utils.models.models import User
 
 
