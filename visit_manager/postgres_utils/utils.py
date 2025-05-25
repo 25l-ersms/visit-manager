@@ -4,8 +4,9 @@ from typing import Any, AsyncGenerator
 from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
 from sqlalchemy import URL, text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
+from visit_manager.app.models.user_models import ServiceTypeEnum
 from visit_manager.package_utils.logger_conf import logger
 from visit_manager.package_utils.settings import PostgresSettings
 from visit_manager.postgres_utils.models import Base
@@ -44,6 +45,28 @@ def get_url(db_name: str = "visit_manager") -> URL:
     )
 
 
+async def create_service_types(conn: AsyncConnection) -> None:
+    """Create service types in the database"""
+    service_types = {
+        ServiceTypeEnum.ELECTRICIAN: "Electrician for fixing electrical problems",
+        ServiceTypeEnum.PLUMBER: "Plumber for fixing plumbing problems",
+        ServiceTypeEnum.CARPENTER: "Carpenter for fixing carpentry problems",
+        ServiceTypeEnum.PAINTER: "Painter for painting problems",
+        ServiceTypeEnum.CLEANER: "Cleaner for cleaning problems",
+    }
+    for service_type, description in service_types.items():
+        await conn.execute(
+            text(
+                """
+            INSERT INTO service_type (name, description) 
+            VALUES (:name, :description)
+            ON CONFLICT (name) DO NOTHING
+            """
+            ),
+            {"name": service_type.value, "description": description},
+        )
+
+
 async def create_tables() -> None:
     """Create database tables asynchronously"""
     db_user, db_password, db_host, db_port = get_creds()
@@ -63,6 +86,7 @@ async def create_tables() -> None:
 
     async with tmp_create_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await create_service_types(conn)
         logger.info("Tables created")
     await tmp_create_engine.dispose()
 

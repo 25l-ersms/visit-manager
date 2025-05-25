@@ -17,7 +17,7 @@ class KafkaSettings(BaseSettings):
 
     TOPIC: str
     BOOTSTRAP_URL: str
-    GROUP_ID: str = "visit_manager"
+    GROUP_ID: str = "handymen"
     AUTHENTICATION_SCHEME: kafka_authentication_scheme_t = "none"
 
 

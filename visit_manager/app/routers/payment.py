@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from stripe.error import StripeError  # type: ignore[attr-defined]
 
 from visit_manager.app.models.payment_models import ChargeRequest, ChargeResponse, RefundResponse
+from visit_manager.app.models.user_models import UserSessionData
+from visit_manager.app.security.common import get_current_user
 from visit_manager.package_utils.logger_conf import logger
 from visit_manager.postgres_utils.models.models import Payment, PaymentStatus
 from visit_manager.postgres_utils.models.transaction import (
@@ -38,6 +40,7 @@ async def create_charge(
     req: ChargeRequest,
     stripe_client: Annotated[Any, Depends(get_stripe_client)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UserSessionData, Depends(get_current_user)],
 ) -> ChargeResponse:
     """
     Creates a charge using Stripe API and stores the transaction in the database.
@@ -75,6 +78,7 @@ async def create_charge(
 async def refund_last_charge(
     stripe_client: Annotated[Any, Depends(get_stripe_client)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UserSessionData, Depends(get_current_user)],
 ) -> RefundResponse:
     """
     Issues a refund for the most recent successful charge.
@@ -110,6 +114,7 @@ async def refund_charge(
     charge_id: str,
     stripe_client: Annotated[Any, Depends(get_stripe_client)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UserSessionData, Depends(get_current_user)],
 ) -> RefundResponse:
     """
     Issues a refund for the given charge and updates its status.
@@ -140,6 +145,7 @@ async def refund_charge(
     status_code=status.HTTP_200_OK,
     summary="List all charges",
     description="Returns a list of all charges made through the system.",
+    dependencies=[Depends(get_current_user)],
 )
 async def list_charges(session: Annotated[AsyncSession, Depends(get_db)]) -> Sequence[ChargeResponse]:
     """

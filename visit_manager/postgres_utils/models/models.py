@@ -91,6 +91,27 @@ class Vendor(Base):
     )
     visits: Mapped[List["Visit"]] = relationship(back_populates="vendor")
 
+    def to_dict(self) -> dict:
+        """Convert vendor instance to a dictionary including relationships."""
+        result = super().to_dict()
+        # Add user info
+        if self.user:
+            result["user"] = {
+                "email": self.user.email,
+                "first_name": self.user.first_name,
+                "last_name": self.user.last_name,
+            }
+        # Add address info
+        if self.address:
+            result["address"] = self.address.to_dict()
+        # Add service types
+        result["service_types"] = [
+            {"name": st.name, "description": st.description} for st in self.offered_service_types
+        ]
+        # Remove sensitive or unnecessary fields
+        result.pop("registration_fee_payment_id", None)
+        return result
+
 
 class Address(Base):
     __tablename__ = "address"
@@ -102,6 +123,13 @@ class Address(Base):
     state_or_region: Mapped[str] = mapped_column(nullable=False)
     country: Mapped[str] = mapped_column(nullable=False)
     zip_code: Mapped[str] = mapped_column(nullable=False)
+
+    def to_dict(self) -> dict:
+        """Convert address instance to a dictionary."""
+        result = super().to_dict()
+        # Remove unnecessary fields
+        result.pop("address_id", None)
+        return result
 
 
 class Payment(Base):
