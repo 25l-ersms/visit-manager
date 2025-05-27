@@ -10,6 +10,7 @@ from fastapi import Cookie, HTTPException
 from jose import ExpiredSignatureError, JWTError, jwt
 
 from visit_manager.app.models.user_models import UserSessionData
+from visit_manager.package_utils.logger_conf import logger
 
 # Load environment variables
 load_dotenv(override=True)
@@ -26,7 +27,7 @@ oauth.register(
     access_token_params=None,
     refresh_token_url=None,
     authorize_state=config("SECRET_KEY"),  # possible to remove
-    redirect_uri=config("REDIRECT_URL", default="http://127.0.0.1:8082/auth"),
+    redirect_uri=config("REDIRECT_URL", default="http://localhost:8082/auth"),
     jwks_uri="https://www.googleapis.com/oauth2/v3/certs",
     client_kwargs={"scope": "openid profile email"},
 )
@@ -43,10 +44,11 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_user(token: str = Cookie(None)) -> UserSessionData:
+def get_current_user(token: str = Cookie(None, alias="access_token")) -> UserSessionData:
     # return UserSessionData(user_id="1", user_email="test@test.com") # TODO: remove
 
     if not token:
+        logger.error("No access_token cookie found")
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     credentials_exception = HTTPException(
