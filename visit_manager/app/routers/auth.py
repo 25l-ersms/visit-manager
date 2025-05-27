@@ -18,26 +18,17 @@ router = APIRouter()
 @router.get("/login")
 async def login(request: Request):
     request.session.clear()
-    _ = request.headers.get("referer")
     frontend_url = os.getenv("FRONTEND_URL")
     redirect_url = os.getenv("REDIRECT_URL")
     request.session["login_redirect"] = frontend_url
-
-    print(f"Login redirect URL: {redirect_url}")
-    print(f"Session before OAuth redirect: {dict(request.session)}")
     return await oauth.auth_demo.authorize_redirect(request, redirect_url, prompt="consent")
 
 
 @router.get("/auth")
 async def auth(request: Request, session: Annotated[AsyncSession, Depends(get_db)]):
-    print(f"Auth callback received. URL: {request.url}")
-    print(f"Query params: {request.query_params}")
-    print(f"Session data: {dict(request.session)}")
     try:
         token = await oauth.auth_demo.authorize_access_token(request)
-        print(f"Token received: {token}")
     except Exception as e:
-        print(f"OAuth token exchange failed: {e}")
         raise HTTPException(status_code=401, detail=f"Google authentication failed: {str(e)}")
 
     try:
@@ -46,7 +37,6 @@ async def auth(request: Request, session: Annotated[AsyncSession, Depends(get_db
         google_response = requests.get(user_info_endpoint, headers=headers)
         user_info = google_response.json()
     except Exception as e:
-        print(f"Google userinfo request failed: {e}")
         raise HTTPException(status_code=401, detail=f"Google userinfo failed: {str(e)}")
 
     user = token.get("userinfo")
