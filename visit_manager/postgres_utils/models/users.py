@@ -19,3 +19,15 @@ async def read_all_users(session: AsyncSession) -> Sequence[User]:
         result = await session.execute(select(User))
         users = result.scalars().all()
         return users
+
+
+async def get_or_create_user(session: AsyncSession, email: str, first_name: str, last_name: str) -> User:
+    async with session.begin():
+        result = await session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user:
+            return user
+        user = User(email=email, first_name=first_name, last_name=last_name)
+        session.add(user)
+        await session.flush()
+        return user
