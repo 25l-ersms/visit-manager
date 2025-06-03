@@ -1,8 +1,12 @@
+import asyncio
+import json
+
 import confluent_kafka  # type: ignore[import-untyped]
 
 from visit_manager.kafka_utils.oauth import KafkaTokenProvider
 from visit_manager.package_utils.logger_conf import logger
 from visit_manager.package_utils.settings import KafkaSettings, kafka_authentication_scheme_t
+from visit_manager.services.visit_service import create_visit
 
 
 def _get_kafka_consumer_config(
@@ -30,8 +34,17 @@ def _get_kafka_consumer_config(
     return config
 
 
-def _handle_message(message: str) -> None:
+def _handle_message(topic: str, message: str) -> None:
     logger.info(f"Processing message: {message}")
+    if topic == "visits.scheduled":
+        try:
+            payload = json.loads(message)
+        except json.JSONDecodeError:
+            logger.error(f"Cannot decode JSON from visits.scheduled: {message}")
+            return
+        asyncio.create_task(create_visit(payload))
+    else:
+        logger.debug(f"Ignoring topic '{topic}' (no handler implemented).")
 
 
 def listen_to_kafka() -> None:
@@ -44,7 +57,8 @@ def listen_to_kafka() -> None:
     )
 
     consumer = confluent_kafka.Consumer(config)
-    consumer.subscribe([settings.TOPIC])
+    topics = [t.strip() for t in settings.TOPIC.split(",")]
+    consumer.subscribe(topics)
     logger.info(f"Listening for messages on Kafka topic '{settings.TOPIC}'...")
 
     while True:
@@ -54,7 +68,9 @@ def listen_to_kafka() -> None:
         if msg.error():
             logger.error(f"Kafka error: {msg.error()}")
             continue
-        _handle_message(msg.value().decode("utf-8"))
+        topic = msg.topic()
+        payload = msg.value().decode("utf-8")
+        _handle_message(topic, payload)
 
 
 def enable_listen_to_kafka() -> None:
