@@ -3,6 +3,7 @@ from typing import Sequence
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import StatementError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from visit_manager.app.models.user_models import ServiceTypeEnum, UserCreate, UserSessionData, VendorCreate
@@ -82,8 +83,12 @@ async def register_as_vendor(session: AsyncSession, user_session_data: UserSessi
         required_deposit_gr=DEPOSIT_GR,
         offered_service_types=service_types,
     )
-    session.add(vendor)
-    await session.flush()
+    try:
+        session.add(vendor)
+        await session.flush()
+    except StatementError as e:
+        logger.error(f"Error creating vendor: {e}")
+        raise HTTPException(status_code=400, detail="Incorrect phone number")
 
     # Send serialized vendor data to Kafka
     send_message(json.dumps(vendor.to_dict()), KafkaTopics.USERS)
