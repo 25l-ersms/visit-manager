@@ -1,0 +1,1 @@
+DEPOSIT_GR = 1000

@@ -1,24 +1,31 @@
-from typing import Annotated, Sequence
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from visit_manager.app.models.user_models import UserCreate
-from visit_manager.postgres_utils.models.users import User, add_user, read_all_users
+from visit_manager.app.models.user_models import UserCreate, UserSessionData, VendorCreate
+from visit_manager.app.security.common import get_current_user
+from visit_manager.postgres_utils.models.users import User, create_or_update_user, register_as_vendor
 from visit_manager.postgres_utils.utils import get_db
 
 router = APIRouter(prefix="/user", tags=["user"], responses={404: {"description": "Not found"}})
 
 
-@router.post("/add", response_model=UserCreate)  # TODO change to real response model
-async def add_user_end(user: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]) -> User:
-    return await add_user(db, user)
+@router.post("/register_as_vendor")
+async def register_vendor(
+    vendor_data: VendorCreate,
+    current_user: Annotated[UserSessionData, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    async with session.begin():
+        return await register_as_vendor(session, current_user, vendor_data)
 
 
-@router.get("/read", response_model=list[UserCreate])  # TODO change to real response model, add real logic
-async def read_all_end(db: Annotated[AsyncSession, Depends(get_db)]) -> Sequence[User]:
-    return await read_all_users(db)
+@router.post("/add_user")  # TODO: remove
+async def add_user(session: Annotated[AsyncSession, Depends(get_db)]):
+    async with session.begin():
+        return await create_or_update_user(session, UserCreate(email="test@test.com", full_name="test user"))
 
 
 @router.get("/test/{vendor_id}")

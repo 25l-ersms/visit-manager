@@ -1,3 +1,5 @@
+from enum import Enum
+
 import confluent_kafka  # type: ignore[import-untyped]
 
 from visit_manager.kafka_utils.oauth import KafkaTokenProvider
@@ -63,3 +65,12 @@ def enable_listen_to_kafka() -> None:
     """
     logger.info("Starting Kafka consumer...")
     listen_to_kafka()
+
+
+class KafkaTopics(Enum):
+    USERS = "users"
+    RATINGS = "ratings"
+
+    @property
+    def topic_name(self) -> str:
+        return self.value
