@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get("/login")
 async def login(request: Request):
     request.session.clear()
-    referer = request.headers.get("referer")
+    _ = request.headers.get("referer")
     frontend_url = os.getenv("FRONTEND_URL")
     redirect_url = os.getenv("REDIRECT_URL")
     request.session["login_redirect"] = frontend_url

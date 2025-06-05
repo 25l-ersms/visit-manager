@@ -58,7 +58,7 @@ async def create_service_types(conn: AsyncConnection) -> None:
         await conn.execute(
             text(
                 """
-            INSERT INTO service_type (name, description) 
+            INSERT INTO service_type (name, description)
             VALUES (:name, :description)
             ON CONFLICT (name) DO NOTHING
             """

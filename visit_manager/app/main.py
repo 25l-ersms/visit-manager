@@ -10,6 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from visit_manager.app.routers import auth, payment, visit_manage
 from visit_manager.kafka_utils.common import enable_listen_to_kafka
 from visit_manager.package_utils.logger_conf import logger
+from visit_manager.package_utils.settings import VisitManagerSettings
 from visit_manager.postgres_utils.utils import create_tables
 
 
@@ -24,7 +25,10 @@ async def lifespan(turbo_app: FastAPI) -> AsyncGenerator[None, Any]:
     logger.info("App is shutting down.")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    root_path=VisitManagerSettings().ROOT_PATH,
+)
 
 
 # OAuth Setup
