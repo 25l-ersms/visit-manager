@@ -26,7 +26,7 @@ oauth.register(
     access_token_url="https://accounts.google.com/o/oauth2/token",
     access_token_params=None,
     refresh_token_url=None,
-    authorize_state=config("SECRET_KEY"),  # possible to remove
+    authorize_state=config("JWT_SECRET_KEY"),  # possible to remove
     redirect_uri=config("REDIRECT_URL", default="http://localhost:8082/auth"),
     jwks_uri="https://www.googleapis.com/oauth2/v3/certs",
     client_kwargs={"scope": "openid profile email"},
@@ -51,6 +51,7 @@ def get_current_user(token: str = Cookie(None, alias="access_token")) -> UserSes
         logger.error("No access_token cookie found")
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+
     credentials_exception = HTTPException(
         status_code=401,
         detail="Could not validate credentials",
@@ -61,6 +62,7 @@ def get_current_user(token: str = Cookie(None, alias="access_token")) -> UserSes
 
         user_id: str = payload.get("sub")
         user_email: str = payload.get("email")
+
 
         if user_id is None or user_email is None:
             raise credentials_exception

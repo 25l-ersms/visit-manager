@@ -1,6 +1,7 @@
 from enum import Enum
 
 from pydantic import BaseModel, EmailStr
+import datetime
 
 
 class ServiceTypeEnum(Enum):
@@ -36,3 +37,25 @@ class VendorCreate(BaseModel):
     address: AddressCreate
     phone_number: str
     service_types: list[ServiceTypeEnum]
+
+
+class ClientCreate(BaseModel):
+    phone_number: str
+    address: AddressCreate
+
+class VisitCreate(BaseModel):
+    start_time: datetime.datetime
+    end_time: datetime.datetime
+    vendor_email: str
+
+
+class VisitData:
+    old_visit: VisitCreate
+    future_visit: VisitCreate
+
+
+class UserInfoModel(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    user_type: str
