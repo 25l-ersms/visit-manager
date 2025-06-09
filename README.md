@@ -3,7 +3,7 @@
 ## Development
 
 ## Basic functionality description
-- endpoint: register, ponieważ o co chodzi z rejestracją -> człowiek klika żeby się zalogować przez google i za pierwszym razem jak się loguje musi jeszcze podać dane typu czy user, czy wendor itp use case opisany w 2.1.1, technicznie to podczas rejestracji on już musi mieć jwt googlowe, widziałem że ten ziomek z telekomony coś próbował na branchu OAuth ale to raczej do pomocy przy implementacji, no i generalnie w momencie rejestracji trzeba wysłać na kafke message już wybierz topic jaki chcesz że człowiek się zarejestrował, żeby móc to użyć w innych mikroserwisach,
+- endpoint: register, ponieważ o co chodzi z rejestracją -> człowiek klika żeby się zalogować przez google i za pierwszym razem jak się loguje musi jeszcze podać dane typu czy user, czy wendor itp use case opisany w 2.1.1, technicznie to podczas rejestracji on już musi mieć jwt googlowe, no i generalnie w momencie rejestracji trzeba wysłać na kafke message już wybierz topic jaki chcesz że człowiek się zarejestrował, żeby móc to użyć w innych mikroserwisach,
 - endpoint: register_visit --> zarejestrowanie wizyty: użytkownik chce móc zarejestrować wizytę u jakiegoś vendora (kiedy i jakie okresy czasu to to już będzie załatwione po stronie visit schedulera który wyśle na kafce że dana wizyta ma być dodana, request przyjdzie od visit_schedulera),
 - endpoint: /vendor/my_visits --> dla wendora zwraca jakie on ma wizyty do odbycia,,
 - endpoint: client/my_visits -->  dla usera jakie ma zaplanowane,

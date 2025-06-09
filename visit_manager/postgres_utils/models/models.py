@@ -64,6 +64,10 @@ class Client(Base):
     phone_number: Mapped[PhoneNumber] = mapped_column(PhoneNumberType, nullable=False)
     is_active: Mapped[bool] = mapped_column(server_default="true", nullable=False)
     visits: Mapped[List["Visit"]] = relationship(back_populates="client")
+    address_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("address.address_id"), nullable=False, unique=True, index=True
+    )
+    address: Mapped[Optional["Address"]] = relationship(single_parent=True)
 
 
 class Vendor(Base):
