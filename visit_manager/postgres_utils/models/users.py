@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import StatementError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from visit_manager.app.models.user_models import ServiceTypeEnum, UserCreate, UserInfoModel, UserSessionData, VendorCreate, VisitCreate, ClientCreate
+from visit_manager.app.models.user_models import ServiceTypeEnum, UserCreate, UserInfoModel, UserSessionData, VendorCreate, VisitCreate, ClientCreate, VisitData
 from visit_manager.kafka_utils.common import KafkaTopics
 from visit_manager.kafka_utils.producer import send_message
 from visit_manager.package_utils.logger_conf import logger
@@ -128,24 +128,83 @@ async def register_as_client(session: AsyncSession, user_session_data: UserSessi
     return client
 
 
-async def get_my_visits_from_db_as_vendor(session: AsyncSession, user_session_data: UserSessionData) -> list[Visit]:
+async def get_my_visits_from_db_as_vendor(session: AsyncSession, user_session_data: UserSessionData) -> list[VisitData]:
     user = await get_user_by_email(session, user_session_data.user_email)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if user.vendor_profile is None:
         raise HTTPException(status_code=400, detail="User is not a vendor")
-    visits = await session.execute(select(Visit).where(Visit.vendor_id == user.user_id))
-    return visits.scalars().all()
+    
+    # Get all visits for the vendor
+    visits_result = await session.execute(select(Visit).where(Visit.vendor_id == user.user_id))
+    visits = visits_result.scalars().all()
+    
+    # For each visit, get the client info and create VisitData
+    visit_data_list = []
+    for visit in visits:
+        # Get client info for this visit
+        client_result = await session.execute(select(Client).where(Client.client_id == visit.client_id))
+        client = client_result.scalar_one_or_none()
+        if client is None:
+            continue
+            
+        # Load vendor's service types
+        vendor = user.vendor_profile
+        await session.refresh(vendor, ["offered_service_types"])
+        if not vendor.offered_service_types:
+            continue
+            
+        # Create VisitData for this visit
+        visit_data = VisitData(
+            start_time=visit.start_timestamp,
+            end_time=visit.end_timestamp,
+            vendor_id=str(visit.vendor_id),
+            client_id=str(visit.client_id),
+            vendor_name=vendor.vendor_name,
+            service_type=vendor.offered_service_types[0].name
+        )
+        visit_data_list.append(visit_data)
+    
+    return visit_data_list
 
 
-async def get_my_visits_from_db_as_client(session: AsyncSession, user_session_data: UserSessionData) -> list[Visit]:
+async def get_my_visits_from_db_as_client(session: AsyncSession, user_session_data: UserSessionData) -> list[VisitData]:
     user = await get_user_by_email(session, user_session_data.user_email)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if user.client_profile is None:
         raise HTTPException(status_code=400, detail="User is not a client")
-    visits = await session.execute(select(Visit).where(Visit.client_id == user.user_id))
-    return visits.scalars().all()
+    
+    # Get all visits for the client
+    visits_result = await session.execute(select(Visit).where(Visit.client_id == user.user_id))
+    visits = visits_result.scalars().all()
+    
+    # For each visit, get the vendor info and create VisitData
+    visit_data_list = []
+    for visit in visits:
+        # Get vendor info for this visit
+        vendor_result = await session.execute(select(Vendor).where(Vendor.vendor_id == visit.vendor_id))
+        vendor = vendor_result.scalar_one_or_none()
+        if vendor is None:
+            continue
+            
+        # Load vendor's service types
+        await session.refresh(vendor, ["offered_service_types"])
+        if not vendor.offered_service_types:
+            continue
+            
+        # Create VisitData for this visit
+        visit_data = VisitData(
+            start_time=visit.start_timestamp,
+            end_time=visit.end_timestamp,
+            vendor_id=str(visit.vendor_id),
+            client_id=str(visit.client_id),
+            vendor_name=vendor.vendor_name,
+            service_type=vendor.offered_service_types[0].name
+        )
+        visit_data_list.append(visit_data)
+    
+    return visit_data_list
 
 
 async def get_my_visits_from_db(session: AsyncSession, user_session_data: UserSessionData) -> list[Visit]:
