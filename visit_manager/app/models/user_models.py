@@ -31,6 +31,14 @@ class UserSessionData(BaseModel):
     user_id: str
     user_email: str
 
+class VisitData(BaseModel):
+    start_time: datetime.datetime
+    end_time: datetime.datetime
+    vendor_id: str
+    client_id: str
+    vendor_name: str
+    service_type: ServiceTypeEnum
+
 
 class VendorCreate(BaseModel):
     vendor_name: str
@@ -47,11 +55,6 @@ class VisitCreate(BaseModel):
     start_time: datetime.datetime
     end_time: datetime.datetime
     vendor_email: str
-
-
-class VisitData:
-    old_visit: VisitCreate
-    future_visit: VisitCreate
 
 
 class UserInfoModel(BaseModel):
